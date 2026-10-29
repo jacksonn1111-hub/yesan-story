@@ -283,7 +283,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
       </div>
       <div class="fld"><span>난이도 고르기</span>
         <div class="modes">
-          <button type="button" class="mode-card" id="lv-easy" data-l="easy" aria-pressed="true"><b>쉬움</b><em>함정이 적고 발판이 부서지지 않아요</em></button>
+          <button type="button" class="mode-card" id="lv-easy" data-l="easy" aria-pressed="true"><b>쉬움</b><em>사과와 함정이 적고 발판이 부서지지 않아요</em></button>
           <button type="button" class="mode-card" id="lv-hard" data-l="hard" aria-pressed="false"><b>도전</b><em>함정이 많고 발판이 부서져요</em></button>
         </div>
       </div>
@@ -490,7 +490,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
      설정: 랭킹을 구글 시트에 저장하려면 sheetUrl 에 Apps Script 웹 앱 주소(https://script.google.com/macros/s/.../exec)를 붙여 넣어요.
      비워 두면 이 기기(브라우저)에만 기록이 저장돼요.
      ===================================================================== */
-  var CONFIG = { sheetUrl: (window.YESAN_SHEET_URL || ''), maxRank: 30, version: 'v55', defaultMode: 'full', defaultLevel: 'easy' };
+  var CONFIG = { sheetUrl: (window.YESAN_SHEET_URL || ''), maxRank: 30, version: 'v57', defaultMode: 'full', defaultLevel: 'easy' };
 
   var OUT = '#1C2B3A';
   var W = 640, H = 360;
@@ -2633,8 +2633,14 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
     LAYOUTS[zi % LAYOUTS.length](B);
     if (RUN.level === 'easy'){
       var cnt = { thorn:0, rock:0 };
-      traps = traps.filter(function(t){ var k = t.k; cnt[k] = (cnt[k] || 0) + 1; return (cnt[k] - 1) % 2 === 0; });   // 함정은 절반만
+      traps = traps.filter(function(t){ return t.k === 'thorn' ? t.y >= GY - 23 : t.landY >= GY - 1; });   // 높은 발판 위(끝자락) 장애물은 없애요 (점프가 어려워요)
+      traps = traps.filter(function(t){ var k = t.k; cnt[k] = (cnt[k] || 0) + 1; return (cnt[k] - 1) % 2 === 0; });   // 남은 함정은 절반만
       plats.forEach(function(p){ p.crumble = false; });                                                          // 부서지는 발판 없음
+      if (zi < 4 && fruits.length){   // 연습장은 그대로, 맵에서는 사과를 약 60%만 놓아요 (가장 높은 곳의 사과는 꼭 남겨서 밧줄·점프의 재미는 유지)
+        var ni = 0, topF = fruits[0], fi;
+        for (fi = 1; fi < fruits.length; fi++) if (fruits[fi].y < topF.y) topF = fruits[fi];
+        fruits = fruits.filter(function(f){ ni++; return f === topF || (ni % 5 !== 2 && ni % 5 !== 4); });
+      }
     }
     var x0, n = 0, q, r;
     for (x0=180; x0<ZW-200; x0+=(ZW < 2500 ? 120 : 230) + ((n*53)%90)){
