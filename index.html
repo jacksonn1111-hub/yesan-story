@@ -289,7 +289,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
       </div>
       <div class="row"><button class="btn" id="btn-start" type="button">모험 시작</button><button class="btn ghost" id="btn-tut" type="button">연습하기</button><button class="btn ghost" id="btn-rank" type="button">랭킹 보기</button></div>
       <p id="best-note"></p>
-      <p class="ver" style="margin:8px 0 0;font-size:12px;color:#9a8a70;text-align:center">버전 v51(랭킹용) · 화면이 예전 그대로면 Ctrl+Shift+R로 새로고침하세요</p>
+      <p class="ver" style="margin:8px 0 0;font-size:12px;color:#9a8a70;text-align:center">버전 v52(랭킹용 · 시트 연결됨) · 화면이 예전 그대로면 Ctrl+Shift+R로 새로고침하세요</p>
     </div>
     <details class="how">
       <summary>게임 방법</summary>
@@ -301,7 +301,6 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
         <li><i><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z" fill="#fff" stroke="#2A2118" stroke-width="1.6" stroke-linejoin="round"/></svg></i><span>퀴즈는 ↑ ↓ 로 고르고 Enter로 정해요. 틀리면 벌점 10초가 붙고 해설을 본 뒤 다시 풀어요.</span></li>
       </ul>
     </details>
-    <p class="note">연습용 시제품입니다. 대화와 퀴즈 내용은 예시이니, 실제 출품 전에 반드시 조사해서 사실을 확인하고 바꿔 주세요.</p>
   </section>
 
   <!-- 이야기 -->
@@ -488,7 +487,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
      설정: 랭킹을 구글 시트에 저장하려면 sheetUrl 에 Apps Script 웹 앱 주소(https://script.google.com/macros/s/.../exec)를 붙여 넣어요.
      비워 두면 이 기기(브라우저)에만 기록이 저장돼요.
      ===================================================================== */
-  var CONFIG = { sheetUrl: (window.YESAN_SHEET_URL || ''), maxRank: 30, version: 'v51', defaultMode: 'full', defaultLevel: 'easy' };
+  var CONFIG = { sheetUrl: (window.YESAN_SHEET_URL || ''), maxRank: 30, version: 'v52', defaultMode: 'full', defaultLevel: 'easy' };
 
   var OUT = '#1C2B3A';
   var W = 640, H = 360;
@@ -500,7 +499,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
   var QPER = 3;   // 한 번에 풀 문제 수 (친구마다 아래 문제 목록에서 이만큼 랜덤으로 나와요)
   var FONT = '"Jua","Apple SD Gothic Neo","Malgun Gothic",sans-serif';
 
-  /* ===== 구역 · NPC · 퀴즈 (예시: 학생들이 조사해서 바꿔 주세요) =====
+  /* ===== 구역 · NPC · 퀴즈 (퀴즈 내용은 웹 검색으로 사실을 확인했어요) =====
      qs 안에 문제를 얼마든지 더 넣을 수 있어요. 형식: { q:'질문', right:'정답', wrong:['오답1','오답2'], exp:'해설' }
      게임을 할 때마다 그 목록에서 QPER개가 랜덤으로 나와요. */
   var ZONES = [
@@ -3097,7 +3096,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
       fetchOnline().then(function(rows){ renderRows(rows, '온라인 랭킹 (모두의 기록)'); })
         .catch(function(){ renderRows(local, '온라인 랭킹에 연결하지 못해 이 기기의 기록을 보여 줘요.'); });
     } else {
-      renderRows(local, '이 기기에 저장된 기록이에요. 구글 시트를 연결하면 모두의 기록을 함께 볼 수 있어요.');
+      renderRows(local, '이 기기에 저장된 기록이에요.');
     }
   }
   function confetti(){
