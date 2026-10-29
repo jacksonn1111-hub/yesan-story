@@ -1,5 +1,11 @@
 <!DOCTYPE html>
-<!-- 예산스토리 v55 -->
+<!-- ================================================================
+  [랭킹용 복사본] 구글 시트 랭킹을 켜려면 아래 작은따옴표 안에 '웹 앱 주소'를 붙여 넣고 저장하세요.
+  예)  window.YESAN_SHEET_URL = 'https://script.google.com/macros/s/AKfy.../exec';
+  비워 두면(지금처럼) 기록은 이 컴퓨터에만 저장돼요.
+================================================================= -->
+<script>window.YESAN_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwN3aDJVbO6NEPmlTFZmWzerFWodOZBKVjMBL5WXL6b0Hc6bRURF2KkI2zLh43iYTE/exec';</script>
+
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -373,6 +379,10 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
     </div>
     <p class="rank-status" id="rank-status"></p>
     <ol class="rank-list" id="rank-list"></ol>
+    <div id="conn-box" style="display:none;margin-top:16px;padding:12px;border:2px dashed #c9b99a;border-radius:12px">
+      <button class="btn ghost small" id="btn-conn-test" type="button">온라인 연결 시험</button>
+      <pre id="conn-log" style="white-space:pre-wrap;font:14px/1.6 system-ui,-apple-system,'Noto Sans KR',sans-serif;margin:10px 0 0;color:#2A2118"></pre>
+    </div>
   </section>
 </main>
 <canvas id="confetti" aria-hidden="true"></canvas>
@@ -480,7 +490,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
      설정: 랭킹을 구글 시트에 저장하려면 sheetUrl 에 Apps Script 웹 앱 주소(https://script.google.com/macros/s/.../exec)를 붙여 넣어요.
      비워 두면 이 기기(브라우저)에만 기록이 저장돼요.
      ===================================================================== */
-  var CONFIG = { sheetUrl: '', maxRank: 30, version: 'v55', defaultMode: 'full', defaultLevel: 'easy' };
+  var CONFIG = { sheetUrl: (window.YESAN_SHEET_URL || ''), maxRank: 30, version: 'v55', defaultMode: 'full', defaultLevel: 'easy' };
 
   var OUT = '#1C2B3A';
   var W = 640, H = 360;
@@ -3047,6 +3057,33 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
     return fetch(CONFIG.sheetUrl, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body:JSON.stringify(rec) })
       .then(function(){ return true; }).catch(function(){ return false; });
   }
+  // 연결 시험: 게임을 끝까지 하지 않아도 읽기·쓰기가 되는지 바로 확인해요 (연결 주소가 있을 때만 보이는 버튼)
+  function connTest(){
+    var log = $('conn-log'), btn = $('btn-conn-test'), lines = [], base = CONFIG.sheetUrl;
+    function put(t){ lines.push(t); log.textContent = lines.join('\n'); }
+    function getTop(q){
+      return fetch(base + '?action=top&limit=100&t=' + Date.now() + q).then(function(r){ return r.text(); }, function(){ throw new Error('네트워크 또는 접근 권한 문제 (주소와 웹 앱 배포를 확인)'); })
+        .then(function(t){
+          var j = null; try { j = JSON.parse(t); } catch(e){ throw new Error('응답이 JSON이 아니에요 (웹 앱 배포의 접근 권한이 "모든 사용자"인지 확인)'); }
+          if (!j || !j.ok) throw new Error('스크립트 오류: ' + (j && j.error ? String(j.error).slice(0, 80) : '응답 형식이 달라요'));
+          return j.rows || [];
+        });
+    }
+    btn.disabled = true; log.textContent = ''; put('온라인 연결을 시험하고 있어요… (약 5초)');
+    getTop('&mode=full&level=hard').then(function(rows){
+      put('① 읽기: 성공 (현재 도전 기록 ' + rows.length + '개)');
+      put('② 쓰기: 시험 기록을 보내는 중…');
+      var rec = { name:'연결시험', gender:'F', mode:'full', level:'hard', ms:3599000, walkMs:3599000, wrongPen:0, trapPen:0, firstTry:0, total:0, stars:0, ver:'test' };
+      return fetch(base, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body:JSON.stringify(rec) })
+        .then(function(){ return new Promise(function(res){ setTimeout(res, 2500); }); })
+        .then(function(){ return getTop('&mode=full&level=hard&test=1'); });
+    }).then(function(rows){
+      var found = rows.some(function(r){ return r.name === '연결시험'; });
+      if (found) put('② 쓰기: 성공 — 시트에 "연결시험" 기록이 올라왔어요.\n\n✔ 모두 정상이에요. 이제 게임을 끝까지 하면 기록이 시트에 쌓여요.');
+      else put('② 쓰기: 실패 — 보냈지만 시트에서 찾지 못했어요.\n   · Apps Script를 "새 버전"으로 다시 배포했는지\n   · 스크립트가 이 구글 시트와 연결되어 있는지 확인해 주세요.');
+    }).catch(function(e){ put('✗ ' + (e && e.message ? e.message : '알 수 없는 오류')); })
+      .then(function(){ btn.disabled = false; });
+  }
   var onlineErr = '';
   function fetchOnline(m, lv){
     if (!sheetOn()) return Promise.reject(new Error('off'));
@@ -3779,6 +3816,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
   $('btn-rank').addEventListener('click', function(){ audioInit(); showBoard(); });
   $('btn-rank2').addEventListener('click', function(){ audioInit(); showBoard(); });
   $('btn-rank-back').addEventListener('click', goHome);
+  if (sheetOn() && /[?&]test=1/.test(location.search)){ $('conn-box').style.display = ''; $('btn-conn-test').addEventListener('click', connTest); }   // 주소 뒤에 ?test=1 을 붙였을 때만 보여요
   ['all','F','M'].forEach(function(f){ $('tab-' + f).addEventListener('click', function(){ showBoard(f); }); });
   ['easy','hard'].forEach(function(x){ $('ltab-' + x).addEventListener('click', function(){ showBoard(null, null, x); }); });
   $('btn-skip').addEventListener('click', skipStory);
