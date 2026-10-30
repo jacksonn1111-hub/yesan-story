@@ -326,7 +326,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
   <section id="s-map" class="screen">
     <div class="stage">
       <canvas id="cv" width="640" height="360" aria-label="횡스크롤 길 화면"></canvas>
-      <button class="pause-btn" id="btn-pause" type="button">⏸ 멈추기 (Esc)</button>
+      <button class="pause-btn" id="btn-pause" type="button">⏸ 멈추기 (Esc/P)</button>
     </div>
     <div class="pad">
       <div class="grp2">
@@ -341,7 +341,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
       </div>
     </div>
     <p class="goal" id="goal"></p>
-    <p class="hint">키보드: ←→ 이동, 스페이스 점프, ↑↓ 밧줄(밧줄에서 ←→ 는 뛰어내리기), ↓ 발판 내려가기, E 또는 Enter 말 걸기, M 소리 끄기, Esc 멈추기·그만두기</p>
+    <p class="hint">키보드: ←→ 이동, 스페이스 점프, ↑↓ 밧줄(밧줄에서 ←→ 는 뛰어내리기), ↓ 발판 내려가기, E 또는 Enter 말 걸기, M 소리 끄기, Esc 또는 P 멈추기·그만두기</p>
   </section>
 
   <!-- 결과 -->
@@ -490,7 +490,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
      설정: 랭킹을 구글 시트에 저장하려면 sheetUrl 에 Apps Script 웹 앱 주소(https://script.google.com/macros/s/.../exec)를 붙여 넣어요.
      비워 두면 이 기기(브라우저)에만 기록이 저장돼요.
      ===================================================================== */
-  var CONFIG = { sheetUrl: (window.YESAN_SHEET_URL || ''), maxRank: 30, version: 'v57', defaultMode: 'full', defaultLevel: 'easy' };
+  var CONFIG = { sheetUrl: (window.YESAN_SHEET_URL || ''), maxRank: 30, version: 'v59', defaultMode: 'full', defaultLevel: 'easy' };
 
   var OUT = '#1C2B3A';
   var W = 640, H = 360;
@@ -573,6 +573,16 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
     } catch(e){}
   }
 
+  // 크롬 전체 화면에서는 Esc가 '전체 화면 종료'로 쓰여서 게임에 전달되지 않아요 → 키보드 잠금으로 Esc를 게임이 받게 하고(길게 누르면 전체 화면 종료), P 키도 같은 일을 해요
+  function lockEsc(on){ try { if (navigator.keyboard){ if (on) navigator.keyboard.lock(['Escape']).catch(function(){}); else navigator.keyboard.unlock(); } } catch(e){} }
+  document.addEventListener('fullscreenchange', function(){ lockEsc(!!document.fullscreenElement); });
+  window.addEventListener('keydown', function(e){
+    if (e.code !== 'KeyP' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    var tg = e.target && e.target.tagName; if (tg === 'INPUT' || tg === 'TEXTAREA') return;
+    if (typeof KeyboardEvent !== 'function') return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    window.dispatchEvent(new KeyboardEvent('keydown', { code:'Escape', key:'Escape', bubbles:true, cancelable:true }));
+  }, true);
   function show(id){
     ['s-start','s-story','s-map','s-result','s-rank'].forEach(function(s){
       $(s).classList.toggle('on', s === id);
@@ -628,13 +638,13 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
     $('ap').textContent = zoneApples + ' / ' + zoneTotal;
     $('pn').textContent = (wrongPen + trapPen) + '초';
     var g;
-    if (RUN.mode === 'tutorial') g = '연습 중이에요 · Esc 키를 누르면 연습을 건너뛰어요';
+    if (RUN.mode === 'tutorial') g = '연습 중이에요 · Esc(또는 P) 키를 누르면 연습을 건너뛰어요';
     else if (cleared && !portalOpen) g = '열쇠를 받았어요! 포털로 가서 열쇠로 문을 열어 보세요.';
     else if (cleared) g = '포털이 열렸어요! 안으로 들어가세요.';
     else if (!canTalk()) g = z.name + ': 사과를 모두 모아야 해요. 남은 사과 ' + (zoneTotal - zoneApples) + '개. 높은 곳에도 있어요.';
     else g = '사과를 모두 모았어요! 가장 높은 곳의 ' + z.npc.name + '에게 말을 걸어 보세요.';
     $('goal').textContent = g;
-    $('btn-pause').textContent = RUN.mode === 'tutorial' ? '연습 건너뛰기 (Esc)' : '⏸ 멈추기 (Esc)';
+    $('btn-pause').textContent = RUN.mode === 'tutorial' ? '연습 건너뛰기 (Esc/P)' : '⏸ 멈추기 (Esc/P)';
     $('btn-talk').classList.toggle('lock', !canTalk());
   }
 
@@ -1377,6 +1387,23 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
     bgCache = { key:key, pw:pw, ph:ph, src:bgim, c:c };
     return c;
   }
+  // 예산시장 배경: 이어 붙이려고 좌우를 뒤집은 칸에서는 간판 글씨(예산상설시장)가 거꾸로 보여요 → 그 부분만 뒤집지 않은 그림으로 덮어요
+  var signPatch = null;
+  function signFix(X, oy, iw, ih, src){
+    var fx0 = 0.33, fx1 = 0.675, fy0 = 0.30, fy1 = 0.55;
+    if (!signPatch || signPatch.src !== src){
+      var sw = src.width, sh = src.height, px = Math.round(sw * fx0), py = Math.round(sh * fy0), pw = Math.round(sw * (fx1 - fx0)), ph = Math.round(sh * (fy1 - fy0));
+      var c = document.createElement('canvas'); c.width = pw; c.height = ph; c.isSignPatch = true;
+      var q = c.getContext('2d'); q.drawImage(src, px, py, pw, ph, 0, 0, pw, ph);
+      q.globalCompositeOperation = 'destination-in';
+      var gx = q.createLinearGradient(0, 0, pw, 0); gx.addColorStop(0, 'rgba(0,0,0,0)'); gx.addColorStop(0.12, 'rgba(0,0,0,1)'); gx.addColorStop(0.88, 'rgba(0,0,0,1)'); gx.addColorStop(1, 'rgba(0,0,0,0)');
+      q.fillStyle = gx; q.fillRect(0, 0, pw, ph);
+      var gy = q.createLinearGradient(0, 0, 0, ph); gy.addColorStop(0, 'rgba(0,0,0,0)'); gy.addColorStop(0.12, 'rgba(0,0,0,1)'); gy.addColorStop(0.88, 'rgba(0,0,0,1)'); gy.addColorStop(1, 'rgba(0,0,0,0)');
+      q.fillStyle = gy; q.fillRect(0, 0, pw, ph);
+      signPatch = { src:src, c:c };
+    }
+    ctx.drawImage(signPatch.c, X + iw * (1 - fx1), oy + ih * fy0, iw * (fx1 - fx0), ih * (fy1 - fy0));
+  }
   function drawBG(zone, t){
     var i, k, x, y;
     var bgim = SP.bg[zone.bg];
@@ -1388,7 +1415,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
       // 옆으로 이어 붙일 때 이음새가 보이지 않게 한 칸씩 좌우를 뒤집어요
       for (var ti = Math.floor(scrollX / iw); ti * iw - scrollX < W; ti++){
         var dxx = ti * iw - scrollX;
-        if (ti % 2){ ctx.save(); ctx.translate(dxx + iw, 0); ctx.scale(-1, 1); ctx.drawImage(bgsrc, 0, oy, iw + 1, ih); ctx.restore(); }
+        if (ti % 2){ ctx.save(); ctx.translate(dxx + iw, 0); ctx.scale(-1, 1); ctx.drawImage(bgsrc, 0, oy, iw + 1, ih); ctx.restore(); if (zone.bg === 'market') signFix(dxx, oy, iw, ih, bgsrc); }
         else ctx.drawImage(bgsrc, dxx, oy, iw + 1, ih);
       }
     } else {
@@ -1993,15 +2020,15 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
 
   function drawUnlockKey(t){
     if (!unlock) return;
-    var u = Math.min(1, unlock.t / 0.9), e = u * u * (3 - 2 * u);
+    var u = Math.min(1, Math.max(0, unlock.t - 0.45) / 1.05), e = u * u * (3 - 2 * u);
     var tx = PORTAL_X, ty = PLT_Y - 60;
     var kx = unlock.sx + (tx - unlock.sx) * e - cam, ky = unlock.sy + (ty - unlock.sy) * e - 46 * Math.sin(u * Math.PI) - camY;
-    var kimg = SP.items[unlock.img], al = unlock.t > 1.2 ? Math.max(0, 1 - (unlock.t - 1.2) / 0.45) : 1;
+    var kimg = SP.items[unlock.img], al = unlock.t > 1.75 ? Math.max(0, 1 - (unlock.t - 1.75) / 0.45) : 1;
     ctx.save(); ctx.globalAlpha = al;
-    var g = ctx.createRadialGradient(kx, ky, 4, kx, ky, 48); g.addColorStop(0, 'rgba(255,240,170,.85)'); g.addColorStop(1, 'rgba(255,220,120,0)');
-    ctx.fillStyle = g; ctx.fillRect(kx - 52, ky - 52, 104, 104);
+    var g = ctx.createRadialGradient(kx, ky, 4, kx, ky, 62); g.addColorStop(0, 'rgba(255,240,170,.9)'); g.addColorStop(1, 'rgba(255,220,120,0)');
+    ctx.fillStyle = g; ctx.fillRect(kx - 66, ky - 66, 132, 132);
     ctx.translate(kx, ky); ctx.rotate(0.45 + u * 1.2 + Math.sin(t * 9) * 0.06);
-    if (imgReady(kimg)){ var kh = 54, kw = kh * kimg.naturalWidth / kimg.naturalHeight; ctx.drawImage(kimg, -kw / 2, -kh / 2, kw, kh); }
+    if (imgReady(kimg)){ var kh = 70, kw = kh * kimg.naturalWidth / kimg.naturalHeight; ctx.drawImage(kimg, -kw / 2, -kh / 2, kw, kh); }
     else { ctx.fillStyle = '#FFD65C'; ctx.beginPath(); ctx.arc(0, -8, 9, 0, 7); ctx.fill(); ctx.fillRect(-3, 0, 6, 22); }
     ctx.restore();
   }
@@ -2041,7 +2068,6 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
     for (i=0;i<plats.length;i++) drawPlat(plats[i], zone);
     drawTraps(zone, t);
     drawPortal(t);
-    drawUnlockKey(t);
 
     var nx = NPC_X - cam, ny = PLT_Y - camY;
     if (nx > -100 && nx < W + 100 && ny > -90 && ny < H + 90){
@@ -2091,6 +2117,7 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
       });
     }
     ctx.globalAlpha = 1;
+    drawUnlockKey(t);   // 열쇠는 캐릭터보다 위에 그려서 가려지지 않아요
 
     ctx.font = '19px ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (i=0;i<floats.length;i++){
@@ -3394,13 +3421,20 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
     }
     if (unlock){
       unlock.t += dt;
-      if (!unlock.opened && unlock.t >= 1.0){
+      var usu = Math.min(1, unlock.t / 0.45), use = usu * usu * (3 - 2 * usu);
+      if (unlock.x1 !== unlock.x0){
+        P.x = unlock.x0 + (unlock.x1 - unlock.x0) * use;
+        P.vx = usu < 1 ? unlock.dir * 70 : 0; if (usu < 1) P.ph += dt * 12;
+      }
+      P.face = (usu < 1 && unlock.x1 !== unlock.x0) ? unlock.dir : ((PORTAL_X > P.x + P.w/2) ? 1 : -1);
+      if (usu < 1){ unlock.sx = P.x + P.w/2; unlock.sy = P.y + P.h * 0.3; }
+      if (!unlock.opened && unlock.t >= 1.6){
         unlock.opened = true; portalOpen = true; sfx('open');
         flash.t = 0.5; flash.col = '190,150,255'; addShake(3, 0.3);
         spawnSparks(PORTAL_X, PLT_Y - 54, 40, ['#C9A0FF','#FFFFFF','#8F6BFF'], 240);
         floats.push({ x:PORTAL_X, y:PLT_Y - 140, life:1.6, text:'포털이 열렸어요!' });
       }
-      if (unlock.t >= 1.8){ unlock = null; startTrans(); }
+      if (unlock.t >= 2.4){ unlock = null; startTrans(); }
     }
     if (zoneBanner && zoneBanner.t > 0) zoneBanner.t -= dt;
     fogA += (((cleared || RUN.mode === 'tutorial') ? 0 : 1) - fogA) * Math.min(1, dt * 1.3);
@@ -3539,8 +3573,12 @@ body.cine .hud,body.cine .goal,body.cine .pause-btn,body.cine .pad{opacity:0;tra
     keys.left = keys.right = keys.jump = keys.up = keys.down = false;
     $('btn-talk').classList.remove('near');
     timerStop();
-    P.face = (PORTAL_X > P.x + P.w/2) ? 1 : -1;
-    unlock = { t:0, opened:false, sx:P.x + P.w/2, sy:P.y + P.h * 0.3, img:(RUN.mode === 'tutorial') ? 'key0' : 'key' + zoneIdx };
+    var ucx = P.x + P.w/2, udir = (PORTAL_X > ucx) ? -1 : 1, uoff = 80, ui;
+    function uok(xc){ for (ui = 0; ui < plats.length; ui++){ var up = plats[ui]; if (!up.gone && Math.abs((GY - up.h) - PLT_Y) < 2 && xc >= up.x + 12 && xc <= up.x + up.w - 12) return true; } return false; }
+    if (!uok(ucx + udir * uoff)) udir = -udir;
+    if (!uok(ucx + udir * uoff)) uoff = 0;     // 물러설 발판이 없으면 그 자리에 서 있어요
+    P.face = (uoff ? udir : ((PORTAL_X > ucx) ? 1 : -1));
+    unlock = { t:0, opened:false, sx:ucx, sy:P.y + P.h * 0.3, x0:P.x, x1:P.x + udir * uoff, dir:udir, img:(RUN.mode === 'tutorial') ? 'key0' : 'key' + zoneIdx };
     sfx('select');
   }
   function startTrans(){
